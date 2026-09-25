@@ -4,7 +4,23 @@
 # Works even if you cancel/SSH drops mid-download — just re-run it.
 set -e
 
-VOLUME="/runpod-volume"
+# Auto-detect Pod vs Serverless mount (mirrors darkcoal-illustrious start.sh compat)
+# Pod terminal: /workspace  | Serverless: /runpod-volume  | (legacy global: /workspace-global)
+VOLUME=""
+for CAND in "/runpod-volume" "/workspace" "/workspace-global"; do
+  if [ -d "$CAND" ] && ( mountpoint -q "$CAND" 2>/dev/null || df "$CAND" >/dev/null 2>&1 ); then
+    # Prefer /runpod-volume if it exists and has models or is a real mount; otherwise use first candidate that exists
+    if [ "$CAND" = "/runpod-volume" ] && [ -d "$CAND" ]; then VOLUME="$CAND"; break; fi
+    if [ -z "$VOLUME" ]; then VOLUME="$CAND"; fi
+  fi
+done
+# Fallback: if /runpod-volume doesn't exist but /workspace does (Pod case), use /workspace
+if [ -z "$VOLUME" ] || [ ! -d "$VOLUME" ]; then
+  if [ -d "/workspace" ]; then VOLUME="/workspace"
+  elif [ -d "/runpod-volume" ]; then VOLUME="/runpod-volume"
+  else VOLUME="/runpod-volume" # default for error message
+  fi
+fi
 MODEL_FILE="MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf"
 REPO="Abiray/MiniMax-H3-Pruned-GGUF"
 TARGET_DIR="$VOLUME/models/diffusion_models"
@@ -21,14 +37,28 @@ echo "Repo: $REPO"
 echo "Target: $TARGET_FILE"
 echo ""
 
-# 1) Check volume is mounted
-if [ ! -d "$VOLUME" ]; then
-  echo -e "${RED}ERROR: $VOLUME not found. Did you attach the Network Volume to this Pod?${NC}"
-  echo "Console -> Pods -> Deploy -> Attach volume h3-ref2va-q4 -> Connect"
+# 1) Check volume is mounted (check all three mount points — Pod uses /workspace)
+if [ ! -d "/runpod-volume" ] && [ ! -d "/workspace" ] && [ ! -d "/workspace-global" ]; then
+  echo -e "${RED}ERROR: No volume found at /runpod-volume, /workspace, or /workspace-global.${NC}"
+  echo "Did you attach the Network Volume to this Pod?"
+  echo "Console -> Pods -> Deploy -> Attach volume h3-ref2va-q4 (Network, same region!) -> Connect"
+  echo "Then run: ls /runpod-volume 2>&1; ls /workspace 2>&1 — one should show 'models/'"
   exit 1
 fi
-if ! mountpoint -q "$VOLUME" 2>/dev/null && [ ! -d "$VOLUME/models" ] && [ "$(df -h "$VOLUME" 2>/dev/null | wc -l)" -lt 2 ]; then
-  echo -e "${YELLOW}WARNING: $VOLUME exists but may not be a mounted Network Volume. Continuing anyway...${NC}"
+echo -e "${GREEN}Detected volume:${NC} $VOLUME"
+if [ "$VOLUME" = "/workspace" ]; then
+  echo -e "${YELLOW}Note: Pod mount is /workspace — script will also symlink to /runpod-volume for Serverless.${NC}"
+fi
+if ! mountpoint -q "$VOLUME" 2>/dev/null && [ ! -d "$VOLUME/models" ]; then
+  echo -e "${YELLOW}WARNING: $VOLUME exists but may not be a mounted Network Volume yet. Continuing...${NC}"
+fi
+# Ensure /runpod-volume forwarding for Serverless (darkcoal compat)
+if [ "$VOLUME" != "/runpod-volume" ] && [ -d "$VOLUME/models" ]; then
+  echo -e "${GREEN}Pod compat:${NC} symlinking $VOLUME/models -> /runpod-volume/models for Serverless"
+  mkdir -p /runpod-volume
+  if [ ! -e /runpod-volume/models ] && [ -d "$VOLUME/models" ]; then
+    ln -sf "$VOLUME/models" /runpod-volume/models 2>/dev/null || cp -rn "$VOLUME/models" /runpod-volume/ 2>/dev/null || true
+  fi
 fi
 
 # 2) Create dirs
@@ -136,11 +166,23 @@ ln -sf "$TARGET_FILE" "$UNET_LINK" 2>/dev/null || true
 echo -e "${GREEN}Symlink: $UNET_LINK -> $TARGET_FILE${NC}"
 ls -lh "$UNET_LINK"
 
-# Final check: ensure Serverless will find it
+# Final check: ensure Serverless will find it (handle Pod /workspace vs Serverless /runpod-volume)
 echo ""
+# Ensure both locations have it (Pod uses /workspace, Serverless uses /runpod-volume)
+for SYNC_VOL in "/runpod-volume" "/workspace" "/workspace-global"; do
+  if [ -d "$SYNC_VOL" ] && [ "$SYNC_VOL" != "$VOLUME" ]; then
+    mkdir -p "$SYNC_VOL/models/diffusion_models" "$SYNC_VOL/models/unet" 2>/dev/null || true
+    if [ ! -f "$SYNC_VOL/models/diffusion_models/$MODEL_FILE" ] && [ -f "$TARGET_FILE" ]; then
+      echo -e "${GREEN}Syncing to $SYNC_VOL for Serverless compat...${NC}"
+      ln -sf "$TARGET_FILE" "$SYNC_VOL/models/diffusion_models/$MODEL_FILE" 2>/dev/null || cp -f "$TARGET_FILE" "$SYNC_VOL/models/diffusion_models/$MODEL_FILE" 2>/dev/null || true
+      ln -sf "$SYNC_VOL/models/diffusion_models/$MODEL_FILE" "$SYNC_VOL/models/unet/$MODEL_FILE" 2>/dev/null || true
+    fi
+  fi
+done
 echo -e "${GREEN}=== SUCCESS — Serverless will find it at: ===${NC}"
 echo "  /runpod-volume/models/diffusion_models/$MODEL_FILE"
 echo "  /runpod-volume/models/unet/$MODEL_FILE (symlink)"
+echo "  (Pod may show at /workspace/... — same data, symlinked)"
 echo ""
 echo -e "${GREEN}You can now STOP/DELETE this Pod — Network Volume persists.${NC}"
-echo "Next: Deploy Serverless Endpoint with image ghcr.io/alfa-jim/darkcoal-minimax:latest and attach volume h3-ref2va-q4"
+echo "Next: Deploy Serverless Endpoint with image ghcr.io/alfa-jim/darkcoal-minimax:latest and attach volume h3-ref2va-q4 (same region!)"

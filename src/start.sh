@@ -59,6 +59,22 @@ echo "worker-comfyui: GPU available — $GPU_CHECK"
 # Ensure ComfyUI-Manager runs in offline network mode inside the container
 comfy-manager-set-mode offline || echo "worker-comfyui - Could not set ComfyUI-Manager network_mode" >&2
 
+# Pod vs Serverless mount: Pod terminal is /workspace, Serverless mounts same Network Volume at /runpod-volume.
+# ComfyUI reads /runpod-volume via extra_model_paths.yaml, so if /workspace has models we symlink them into /runpod-volume for consistency. (from darkcoal-illustrious)
+if [ ! -d /runpod-volume/models ] && [ -d /workspace/models ]; then
+    echo "worker-comfyui: Pod compat — /workspace/models found, symlinking into /runpod-volume" >&2
+    mkdir -p /runpod-volume
+    for d in /workspace/models/*; do
+        bn=$(basename "$d")
+        if [ ! -e "/runpod-volume/models/$bn" ]; then
+            ln -s "$d" "/runpod-volume/models/$bn" 2>/dev/null || true
+        fi
+    done
+    if [ ! -e /runpod-volume/models ] && [ -d /workspace/models ]; then
+        ln -s /workspace/models /runpod-volume/models 2>/dev/null || true
+    fi
+fi
+
 echo "worker-comfyui: Checking for GGUF at /runpod-volume/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf"
 if [ -f "/runpod-volume/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf" ]; then
   echo "  FOUND: /runpod-volume/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf ($(du -h "/runpod-volume/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf" 2>/dev/null | cut -f1))"
