@@ -18,22 +18,42 @@ Model is 11.6GB, but HF download needs 2x temp space + ComfyUI output cache 2-3G
 ### Deploy (10 min)
 
 #### 0) Prereqs
-* Docker Desktop + Docker Hub account
+* Docker Desktop not needed — GHCR auto-builds `ghcr.io/alfa-jim/darkcoal-minimax:latest`
 * RunPod account + $10
-* 20GB Network Volume created: Console -> Network Volumes -> `h3-ref2va-q4` 20GB (same region as endpoint, e.g. EU-RO-1)
+* **Global Volume (recommended for rarely-used):** Console -> Storage -> `+ New volume` -> `Global volume` -> `h3-ref2va-q4` (elastic, no capacity to provision, region-independent). Alternative: 20GB Network Volume if you prefer (`Network volume` tied to one datacenter).
 
-#### 1) Put model on Volume (one-time, 3 min via Pod) — **FIXED to match working darkcoal mount paths**
+#### 1) Put model on Global Volume (one-time, 3 min via Pod) — **Global Volume = perfect for rarely-used**
 ```powershell
-# Console -> Pods -> Deploy -> Community -> RTX 4090 -> Attach Volume h3-ref2va-q4 -> Connect
-# Working layout (from darkcoal-qwen-fast / darkcoal-illustrious) — GGUF MUST be in diffusion_models/
-mkdir -p /runpod-volume/models/diffusion_models /runpod-volume/models/text_encoders /runpod-volume/models/unet
+# Global Volume = elastic, no capacity to set, attachable to ANY region's Pod/Serverless
+# Ideal for model serving: write once (download), read often (inference).
+
+# A) Create Global Volume: Console -> Storage -> + New volume -> Storage type: Global volume -> Name: h3-ref2va-q4 -> Create
+
+# B) Download via Pod: Console -> Pods -> + Deploy -> Attach h3-ref2va-q4 (Global) -> Connect
+#    Mount path for Global Volume defaults to /workspace-global (if you also attach a Network Volume) or /workspace
+
+# Check which mount you got:
+ls /workspace-global 2>&1 || ls /workspace 2>&1
+# Use the one that exists — example below uses /workspace-global (most common when both volumes possible)
+# Working layout (from darkcoal-qwen-fast) — GGUF MUST be in diffusion_models/
+
+# For Global Volume at /workspace-global:
+mkdir -p /workspace-global/models/diffusion_models /workspace-global/models/unet
 pip install -q huggingface_hub
-# Direct download to the CORRECT folder (UnetLoaderGGUF with unet_gguf alias only scans diffusion_models/)
-hf download Abiray/MiniMax-H3-Pruned-GGUF MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf --local-dir /runpod-volume/models/diffusion_models
-# Also symlink to unet/ for fallback (ComfyUI checks both)
-ln -sf /runpod-volume/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf /runpod-volume/models/unet/
-ls -lh /runpod-volume/models/diffusion_models/  # must show 11.6G file here!
-ls -lh /runpod-volume/models/unet/
+hf download Abiray/MiniMax-H3-Pruned-GGUF MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf --local-dir /workspace-global/models/diffusion_models
+ln -sf /workspace-global/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf /workspace-global/models/unet/
+ls -lh /workspace-global/models/diffusion_models/  # must show 11.6G!
+
+# If your Global Volume mounted at /workspace instead (no suffix):
+# mkdir -p /workspace/models/diffusion_models && hf download ... --local-dir /workspace/models/diffusion_models
+
+# For OLD Network Volume (if you still use it): same but at /runpod-volume
+# mkdir -p /runpod-volume/models/diffusion_models && hf download ... --local-dir /runpod-volume/models/diffusion_models
+
+# Why Global Volume for rarely-used: 
+# - Network Volume: tied to ONE datacenter (EU-RO-1 etc), you pay $0.07/GB even if idle, and Serverless workers in other regions can't see it.
+# - Global Volume: region-independent (any Serverless worker globally can mount it), elastic (no 20GB provisioning), you pay only for used bytes + tiny request fees ($0.005/1k writes, $0.0005/1k reads). Perfect for 11.6GB you read rarely.
+# Caveat: Global Volume is object-backed, not POSIX: no file locking/atomic rename, last-write-wins on concurrent writes, eventual consistency, no permission bits. Fine for GGUF serving (read-heavy).
 ```
 
 #### 2) Build & push Docker
@@ -47,12 +67,12 @@ docker pull YOUR_DOCKER_USER/worker-minimax-h3:ref2va-q4
 
 #### 3) Create Serverless Endpoint
 1. https://console.runpod.io/serverless -> **New Endpoint**
-2. **Container Image:** `YOUR_DOCKER_USER/worker-minimax-h3:ref2va-q4`
+2. **Container Image:** `ghcr.io/alfa-jim/darkcoal-minimax:latest` (auto-built via GitHub Actions, no Docker Desktop needed)
 3. **Container Disk:** `25 GB`
-4. **Network Volume:** `h3-ref2va-q4` -> mount `/runpod-volume` (auto via `extra_model_paths.yaml`)
+4. **Storage:** Attach `h3-ref2va-q4` **Global volume** (type Global badge). Worker auto-detects `/runpod-volume` OR `/workspace-global` OR `/workspace` via `extra_model_paths.yaml` + `start.sh` symlink. Region-independent — any worker globally sees it.
 5. **Env:** none required (or `HF_TOKEN` if private)
 6. **Workers:** `Min 0` (must for $0 idle), `Max 2`, `Idle 5s`, `Execution 300s` (video gen is long)
-7. **GPU:** `Flex -> A6000 (priority) + 4090` or just `A6000` — cheapest $/video is A6000 $0.53/hr Secure
+7. **GPU:** `Flex -> A6000 (priority) + 4090` or just `A6000` — cheapest $/video is A6000 $0.53/hr Secure. Global Volume means you can deploy workers in **any region** without re-downloading model.
 8. Save -> copy `ENDPOINT_ID`
 
 #### 4) Test (text-to-video, no refs)
@@ -108,12 +128,13 @@ Workflow must use `LoadImage` nodes referencing `char_front.png` etc, connected 
 
 **Tip for ad videos:** 5-6s, 16:9 1280x720, prompt like: `"cinematic ad for AI roleplay app, beautiful woman with [your character description], luxury bedroom, soft bokeh, winks at camera, whispers 'your story awaits', 4k, 24fps"` — Ref2VA keeps identity locked.
 
-### Cost
+### Cost: Global Volume wins for rarely-used
 
-* **Idle:** $0 (Min 0)
+* **Idle:** $0 (Min 0 workers)
 * **Warm gen:** `~160s * $0.000147 (A6000 $0.53/hr) = $0.023/video` vs API $0.40-$0.65
-* **Volume:** 20GB * $0.07 = $1.40/mo
-* **500 ads/mo:** ~$13 vs $280 via API
+* **Network Volume (old):** 20GB * $0.07 = $1.40/mo + tied to ONE datacenter
+* **Global Volume (new, recommended):** Elastic (you store 11.6GB -> pay ~$0.81/mo actual used) + request fees `Class A $0.005/1k writes, Class B $0.0005/1k reads` -> for rarely-used (say 20 ads/mo = 20 reads) = **~$0.01/mo requests**. Region-independent, any worker can mount it without re-download.
+* **500 ads/mo:** ~$13 compute + $0.81 storage vs $280 via API. Rarely-used (20/mo): ~$1.27 total vs $11.20 API.
 
 ### Updates
 

@@ -59,6 +59,36 @@ echo "worker-comfyui: GPU available — $GPU_CHECK"
 # Ensure ComfyUI-Manager runs in offline network mode inside the container
 comfy-manager-set-mode offline || echo "worker-comfyui - Could not set ComfyUI-Manager network_mode" >&2
 
+# ---------------------------------------------------------------------------
+# Global Volume / Network Volume compatibility (rare use = Global Volume Beta)
+# Global volumes mount at /workspace or /workspace-global (not /runpod-volume)
+# and are ideal for rarely-used read-heavy model serving (no provisioned capacity,
+# elastic, region-independent). Ensure ComfyUI finds the GGUF either way.
+# ---------------------------------------------------------------------------
+for GVOL in "/workspace-global" "/workspace"; do
+  if [ -d "$GVOL/models/diffusion_models" ] || [ -d "$GVOL/models/unet" ]; then
+    echo "worker-comfyui: Detected Global Volume at $GVOL"
+    # Ensure /runpod-volume symlink points to global volume for legacy paths
+    if [ ! -e "/runpod-volume/models" ] && [ -d "$GVOL/models" ]; then
+      mkdir -p /runpod-volume
+      ln -sf "$GVOL/models" /runpod-volume/models 2>/dev/null || true
+      echo "worker-comfyui: Linked $GVOL/models -> /runpod-volume/models"
+    fi
+    # Also ensure diffusion_models/unet symlink both ways
+    if [ -f "$GVOL/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf" ] && [ ! -f "/runpod-volume/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf" ]; then
+      mkdir -p /runpod-volume/models/diffusion_models
+      ln -sf "$GVOL/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf" /runpod-volume/models/diffusion_models/ 2>/dev/null || true
+    fi
+    break
+  fi
+done
+
+# Log which GGUF is visible
+echo "worker-comfyui: Checking for GGUF at:"
+for P in "/runpod-volume/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf" "/workspace-global/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf" "/workspace/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf"; do
+  if [ -f "$P" ]; then echo "  FOUND: $P ($(du -h "$P" 2>/dev/null | cut -f1))"; else echo "  missing: $P"; fi
+done
+
 echo "worker-comfyui: Starting ComfyUI"
 
 # Allow operators to tweak verbosity; default is DEBUG.

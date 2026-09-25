@@ -21,3 +21,44 @@ runpod_worker_comfy:
   # Based on working darkcoal-qwen-fast / darkcoal-illustrious.
   unet_gguf: models/diffusion_models/
   clip_gguf: models/text_encoders/
+
+# Global Volume support (Beta) — rarely-used model serving, region-independent
+# If Serverless mounts a Global Volume, it may appear at /workspace-global or /workspace
+# instead of /runpod-volume. Adding these ensures UnetLoaderGGUF finds the GGUF either way.
+global_volume_comfy:
+  base_path: /workspace-global
+  checkpoints: models/checkpoints/
+  clip: models/clip/
+  clip_vision: models/clip_vision/
+  configs: models/configs/
+  controlnet: models/controlnet/
+  embeddings: models/embeddings/
+  loras: models/loras/
+  ipadapter: models/ipadapter/
+  pulid: models/pulid/
+  upscale_models: models/upscale_models/
+  vae: models/vae/
+  unet: models/unet/
+  text_encoders: models/text_encoders/
+  diffusion_models: models/diffusion_models/
+  unet_gguf: models/diffusion_models/
+  clip_gguf: models/text_encoders/
+
+global_volume_comfy_alt:
+  base_path: /workspace
+  checkpoints: models/checkpoints/
+  clip: models/clip/
+  clip_vision: models/clip_vision/
+  configs: models/configs/
+  controlnet: models/controlnet/
+  embeddings: models/embeddings/
+  loras: models/loras/
+  ipadapter: models/ipadapter/
+  pulid: models/pulid/
+  upscale_models: models/upscale_models/
+  vae: models/vae/
+  unet: models/unet/
+  text_encoders: models/text_encoders/
+  diffusion_models: models/diffusion_models/
+  unet_gguf: models/diffusion_models/
+  clip_gguf: models/text_encoders/
