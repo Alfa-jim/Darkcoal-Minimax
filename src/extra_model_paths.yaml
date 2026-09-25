@@ -1,23 +1,17 @@
-runpod_worker_comfy:
+comfyui:
   base_path: /runpod-volume
+  is_default: true
   checkpoints: models/checkpoints/
-  clip: models/clip/
+  clip: models/text_encoders/
   clip_vision: models/clip_vision/
   configs: models/configs/
   controlnet: models/controlnet/
-  embeddings: models/embeddings/
-  loras: models/loras/
-  ipadapter: models/ipadapter/
-  pulid: models/pulid/
-  upscale_models: models/upscale_models/
-  vae: models/vae/
-  unet: models/unet/
-  text_encoders: models/text_encoders/
   diffusion_models: models/diffusion_models/
-  # Explicit GGUF aliases — ComfyUI-GGUF registers these as synthetic aliases
-  # (unet_gguf -> diffusion_models/unet, clip_gguf -> text_encoders/clip)
-  # with a ".gguf"-only extension filter. Without explicit entries the
-  # volume path may miss the .gguf filter if node import order shifts.
-  # Based on working darkcoal-qwen-fast / darkcoal-illustrious.
   unet_gguf: models/diffusion_models/
-  clip_gguf: models/text_encoders/
+  vae: models/vae/
+  loras: models/loras/
+  upscale_models: models/upscale_models/
+  custom_nodes: custom_nodes/
+  input: input/
+  output: output/
+  embeddings: models/embeddings/
