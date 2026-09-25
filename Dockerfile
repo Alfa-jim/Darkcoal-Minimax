@@ -68,6 +68,9 @@ RUN cd /comfyui && timeout 300 python main.py --quick-test-for-ci --cpu
 
 WORKDIR /comfyui
 ADD src/extra_model_paths.yaml ./
+# Validate extra_model_paths matches working darkcoal repos (unet_gguf + diffusion_models required for GGUF)
+RUN python -c "import yaml, pathlib; p=pathlib.Path('extra_model_paths.yaml'); cfg=yaml.safe_load(p.read_text()); assert 'runpod_worker_comfy' in cfg, cfg; c=cfg['runpod_worker_comfy']; assert 'unet_gguf' in c, 'unet_gguf missing - GGUF will not be found on volume'; assert 'diffusion_models' in c, 'diffusion_models missing'; assert 'unet' in c; print('extra_model_paths.yaml OK:', list(c.keys()))" \
+ && python -c "import folder_paths, utils.extra_config; utils.extra_config.load_extra_path_config('extra_model_paths.yaml'); print('extra paths loaded OK:', [k for k in folder_paths.folder_names_and_paths if 'diffusion' in k or 'unet' in k])"
 
 WORKDIR /
 RUN uv pip install runpod requests websocket-client

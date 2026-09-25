@@ -22,16 +22,18 @@ Model is 11.6GB, but HF download needs 2x temp space + ComfyUI output cache 2-3G
 * RunPod account + $10
 * 20GB Network Volume created: Console -> Network Volumes -> `h3-ref2va-q4` 20GB (same region as endpoint, e.g. EU-RO-1)
 
-#### 1) Put model on Volume (one-time, 3 min via Pod)
+#### 1) Put model on Volume (one-time, 3 min via Pod) — **FIXED to match working darkcoal mount paths**
 ```powershell
 # Console -> Pods -> Deploy -> Community -> RTX 4090 -> Attach Volume h3-ref2va-q4 -> Connect
-mkdir -p /runpod-volume/models/unet /runpod-volume/models/diffusion_models
-# login if needed
+# Working layout (from darkcoal-qwen-fast / darkcoal-illustrious) — GGUF MUST be in diffusion_models/
+mkdir -p /runpod-volume/models/diffusion_models /runpod-volume/models/text_encoders /runpod-volume/models/unet
 pip install -q huggingface_hub
-hf download Abiray/MiniMax-H3-Pruned-GGUF MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf --local-dir /runpod-volume/models/unet
-# symlink for UnetLoaderGGUF which checks diffusion_models too
-ln -sf /runpod-volume/models/unet/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf /runpod-volume/models/diffusion_models/
-ls -lh /runpod-volume/models/unet/  # 11.6G
+# Direct download to the CORRECT folder (UnetLoaderGGUF with unet_gguf alias only scans diffusion_models/)
+hf download Abiray/MiniMax-H3-Pruned-GGUF MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf --local-dir /runpod-volume/models/diffusion_models
+# Also symlink to unet/ for fallback (ComfyUI checks both)
+ln -sf /runpod-volume/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf /runpod-volume/models/unet/
+ls -lh /runpod-volume/models/diffusion_models/  # must show 11.6G file here!
+ls -lh /runpod-volume/models/unet/
 ```
 
 #### 2) Build & push Docker
@@ -123,7 +125,7 @@ docker buildx build --platform linux/amd64 -t YOUR_DOCKER_USER/worker-minimax-h3
 ### Troubleshooting
 
 * `ComfyUI server not reachable` -> rebuild with `--platform linux/amd64`, check `docker logs`. This image bypassed `torch cu13` issue via `cu128` pin.
-* `unet_name not in list` -> volume not mounted or file not at `/runpod-volume/models/unet/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf` -> check `extra_model_paths.yaml` and symlink.
+* `unet_name not in list` -> volume not mounted or file not at `/runpod-volume/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf` (NOT just `/unet/`) -> check `extra_model_paths.yaml` has `unet_gguf: models/diffusion_models/` like working repos.
 * OOM -> use `Q4_K_M` not `Q6_K`, ensure GPU 24GB+. L4/A6000 preferred.
 * Slow cold start -> enable FlashBoot + ensure volume is same region as workers.
 
