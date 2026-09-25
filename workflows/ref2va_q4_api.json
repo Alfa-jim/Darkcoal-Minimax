@@ -1,0 +1,60 @@
+{
+  "3": {
+    "inputs": {
+      "unet_name": "MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf"
+    },
+    "class_type": "UnetLoaderGGUF",
+    "_meta": { "title": "Unet Loader (GGUF) - H3 Ref2VA Q4" }
+  },
+  "10": {
+    "inputs": {
+      "prompt": "a beautiful woman in a luxury bedroom, cinematic lighting, ad for AI roleplay app, smiling at camera, 24fps",
+      "aspect_ratio": "16:9",
+      "duration": 5
+    },
+    "class_type": "MiniMaxH3Prompt",
+    "_meta": { "title": "MiniMax H3 Prompt" }
+  },
+  "15": {
+    "inputs": {
+      "width": 1280,
+      "height": 720,
+      "length": 120
+    },
+    "class_type": "EmptyH3LatentVideo",
+    "_meta": { "title": "Empty H3 Latent Video" }
+  },
+  "20": {
+    "inputs": {
+      "images": ["ref1.png", "ref2.png"]
+    },
+    "class_type": "LoadImageSet",
+    "_meta": { "title": "Load Reference Images (up to 9)" }
+  },
+  "25": {
+    "inputs": {
+      "model": ["3", 0],
+      "conditioning": ["10", 0],
+      "latent": ["15", 0],
+      "reference_images": ["20", 0]
+    },
+    "class_type": "MiniMaxH3Sampler",
+    "_meta": { "title": "MiniMax H3 Sampler Ref2VA" }
+  },
+  "30": {
+    "inputs": {
+      "samples": ["25", 0],
+      "vae": ["3", 1]
+    },
+    "class_type": "VAEDecode",
+    "_meta": { "title": "VAE Decode" }
+  },
+  "35": {
+    "inputs": {
+      "filename_prefix": "h3_ref2va_ad",
+      "images": ["30", 0]
+    },
+    "class_type": "SaveVideo",
+    "_meta": { "title": "Save Video" }
+  }
+}

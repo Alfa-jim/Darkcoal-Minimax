@@ -1,0 +1,16 @@
+runpod_worker_comfy:
+  base_path: /runpod-volume
+  checkpoints: models/checkpoints/
+  clip: models/clip/
+  clip_vision: models/clip_vision/
+  configs: models/configs/
+  controlnet: models/controlnet/
+  diffusion_models: models/diffusion_models/
+  # GGUF UnetLoaderGGUF looks at diffusion_models AND unet - map both to same volume path
+  unet: models/unet/
+  # Also map diffusion_models to unet folder so UnetLoaderGGUF finds the GGUF either way
+  vae: models/vae/
+  text_encoders: models/text_encoders/
+  loras: models/loras/
+  embeddings: models/embeddings/
+  upscale_models: models/upscale_models/

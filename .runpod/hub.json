@@ -1,0 +1,62 @@
+{
+  "title": "MiniMax H3 Ref2VA Q4 - AI Ad Video (GGUF)",
+  "description": "Generate synchronized 24fps video + 32kHz audio ad videos with character consistency (Ref2VA, up to 9 refs). Pruned Q4_K_M 11.6GB GGUF for single GPU (A6000/4090 24GB). For AI roleplay app ads. ComfyUI v0.33.1 + ComfyUI-GGUF. Requires Network Volume 20GB at /runpod-volume with MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf in models/unet/.",
+  "type": "serverless",
+  "category": "video",
+  "iconUrl": "https://cdn-avatars.huggingface.co/v1/production/uploads/672622efdf9cce918fdc713f/2wilqSZUrc1H5aGXV54Pp.png",
+  "config": {
+    "runsOn": "GPU",
+    "containerDiskInGb": 25,
+    "volumeMountPath": "/runpod-volume",
+    "volumeId": "",
+    "gpuIds": "AMPERE_24,A6000,ADA_24",
+    "gpuCount": 1,
+    "allowedCudaVersions": ["12.8", "12.9", "13.0"],
+    "env": [
+      {
+        "key": "COMFY_ORG_API_KEY",
+        "input": {
+          "name": "Comfy.org API Key",
+          "type": "string",
+          "description": "Optional: Comfy.org API key for API Nodes",
+          "default": "",
+          "advanced": true
+        }
+      },
+      {
+        "key": "BUCKET_ENDPOINT_URL",
+        "input": {
+          "name": "S3 Bucket Endpoint URL",
+          "type": "string",
+          "description": "Optional: S3 endpoint for video upload e.g. https://bucket.s3.region.amazonaws.com",
+          "default": "",
+          "advanced": true
+        }
+      },
+      {
+        "key": "BUCKET_ACCESS_KEY_ID",
+        "input": {
+          "name": "S3 Access Key ID",
+          "type": "string",
+          "description": "AWS Access Key ID",
+          "default": "",
+          "advanced": true
+        }
+      },
+      {
+        "key": "BUCKET_SECRET_ACCESS_KEY",
+        "input": {
+          "name": "S3 Secret Access Key",
+          "type": "string",
+          "description": "AWS Secret Access Key",
+          "default": "",
+          "advanced": true
+        }
+      },
+      {
+        "key": "SERVE_API_LOCALLY",
+        "input": { "name": "Serve API Locally (dev)", "type": "boolean", "description": "Dev only", "default": false, "advanced": true }
+      }
+    ]
+  }
+}
