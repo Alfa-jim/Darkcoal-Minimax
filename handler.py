@@ -749,105 +749,71 @@ def handler(job):
                 errors.append(warning_msg)
 
         print(f"worker-comfyui - Processing {len(outputs)} output nodes...")
+        # MiniMax H3 SaveVideo/VHS outputs mp4 under "gifs" or "videos" depending on ComfyUI version;
+        # images still used for fallback. Also handle audio (mp3/wav) for Ref2VA audio refs.
+        MEDIA_KEYS = ("images", "gifs", "videos", "audio", "audios")
         for node_id, node_output in outputs.items():
-            if "images" in node_output:
+            handled_keys = [k for k in node_output.keys() if k in MEDIA_KEYS]
+            unhandled_keys = [k for k in node_output.keys() if k not in MEDIA_KEYS]
+            if unhandled_keys:
+                warn_msg = f"Node {node_id} produced unhandled output keys: {unhandled_keys}."
+                print(f"worker-comfyui - WARNING: {warn_msg}")
+
+            for media_key in handled_keys:
+                items = node_output[media_key] or []
                 print(
-                    f"worker-comfyui - Node {node_id} contains {len(node_output['images'])} image(s)"
+                    f"worker-comfyui - Node {node_id} [{media_key}] contains {len(items)} file(s)"
                 )
-                for image_info in node_output["images"]:
-                    filename = image_info.get("filename")
-                    subfolder = image_info.get("subfolder", "")
-                    img_type = image_info.get("type")
+                for info in items:
+                    filename = info.get("filename")
+                    subfolder = info.get("subfolder", "")
+                    ftype = info.get("type")
 
-                    # skip temp images
-                    if img_type == "temp":
-                        print(
-                            f"worker-comfyui - Skipping image {filename} because type is 'temp'"
-                        )
+                    if ftype == "temp":
+                        print(f"worker-comfyui - Skipping {media_key} {filename} because type is 'temp'")
                         continue
-
                     if not filename:
-                        warn_msg = f"Skipping image in node {node_id} due to missing filename: {image_info}"
+                        warn_msg = f"Skipping {media_key} in node {node_id} due to missing filename: {info}"
                         print(f"worker-comfyui - {warn_msg}")
                         errors.append(warn_msg)
                         continue
 
-                    image_bytes = get_image_data(filename, subfolder, img_type)
-
-                    if image_bytes:
-                        file_extension = os.path.splitext(filename)[1] or ".png"
-
-                        if os.environ.get("BUCKET_ENDPOINT_URL"):
-                            try:
-                                with tempfile.NamedTemporaryFile(
-                                    suffix=file_extension, delete=False
-                                ) as temp_file:
-                                    temp_file.write(image_bytes)
-                                    temp_file_path = temp_file.name
-                                print(
-                                    f"worker-comfyui - Wrote image bytes to temporary file: {temp_file_path}"
-                                )
-
-                                print(f"worker-comfyui - Uploading {filename} to S3...")
-                                s3_url = rp_upload.upload_image(job_id, temp_file_path)
-                                os.remove(temp_file_path)  # Clean up temp file
-                                print(
-                                    f"worker-comfyui - Uploaded {filename} to S3: {s3_url}"
-                                )
-                                # Append dictionary with filename and URL
-                                output_data.append(
-                                    {
-                                        "filename": filename,
-                                        "type": "s3_url",
-                                        "data": s3_url,
-                                    }
-                                )
-                            except Exception as e:
-                                error_msg = f"Error uploading {filename} to S3: {e}"
-                                print(f"worker-comfyui - {error_msg}")
-                                errors.append(error_msg)
-                                if "temp_file_path" in locals() and os.path.exists(
-                                    temp_file_path
-                                ):
-                                    try:
-                                        os.remove(temp_file_path)
-                                    except OSError as rm_err:
-                                        print(
-                                            f"worker-comfyui - Error removing temp file {temp_file_path}: {rm_err}"
-                                        )
-                        else:
-                            # Return as base64 string
-                            try:
-                                base64_image = base64.b64encode(image_bytes).decode(
-                                    "utf-8"
-                                )
-                                # Append dictionary with filename and base64 data
-                                output_data.append(
-                                    {
-                                        "filename": filename,
-                                        "type": "base64",
-                                        "data": base64_image,
-                                    }
-                                )
-                                print(f"worker-comfyui - Encoded {filename} as base64")
-                            except Exception as e:
-                                error_msg = f"Error encoding {filename} to base64: {e}"
-                                print(f"worker-comfyui - {error_msg}")
-                                errors.append(error_msg)
-                    else:
-                        error_msg = f"Failed to fetch image data for {filename} from /view endpoint."
+                    file_bytes = get_image_data(filename, subfolder, ftype)
+                    if not file_bytes:
+                        error_msg = f"Failed to fetch {media_key} data for {filename} from /view endpoint."
+                        print(f"worker-comfyui - {error_msg}")
                         errors.append(error_msg)
+                        continue
 
-            # Check for other output types
-            other_keys = [k for k in node_output.keys() if k != "images"]
-            if other_keys:
-                warn_msg = (
-                    f"Node {node_id} produced unhandled output keys: {other_keys}."
-                )
-                print(f"worker-comfyui - WARNING: {warn_msg}")
-                print(
-                    f"worker-comfyui - --> If this output is useful, please consider opening an issue on GitHub to discuss adding support."
-                )
+                    file_extension = os.path.splitext(filename)[1] or (".mp4" if media_key in ("gifs","videos") else ".png")
+
+                    if os.environ.get("BUCKET_ENDPOINT_URL"):
+                        try:
+                            with tempfile.NamedTemporaryFile(suffix=file_extension, delete=False) as temp_file:
+                                temp_file.write(file_bytes)
+                                temp_file_path = temp_file.name
+                            print(f"worker-comfyui - Wrote {media_key} bytes to temp file: {temp_file_path}")
+                            print(f"worker-comfyui - Uploading {filename} to S3...")
+                            s3_url = rp_upload.upload_image(job_id, temp_file_path)
+                            os.remove(temp_file_path)
+                            print(f"worker-comfyui - Uploaded {filename} to S3: {s3_url}")
+                            output_data.append({"filename": filename, "type": "s3_url", "data": s3_url, "media_type": media_key})
+                        except Exception as e:
+                            error_msg = f"Error uploading {filename} to S3: {e}"
+                            print(f"worker-comfyui - {error_msg}")
+                            errors.append(error_msg)
+                            if "temp_file_path" in locals() and os.path.exists(temp_file_path):
+                                try: os.remove(temp_file_path)
+                                except OSError as rm_err: print(f"worker-comfyui - Error removing temp file {temp_file_path}: {rm_err}")
+                    else:
+                        try:
+                            b64 = base64.b64encode(file_bytes).decode("utf-8")
+                            output_data.append({"filename": filename, "type": "base64", "data": b64, "media_type": media_key})
+                            print(f"worker-comfyui - Encoded {filename} [{media_key}] as base64 ({len(file_bytes)} bytes)")
+                        except Exception as e:
+                            error_msg = f"Error encoding {filename} to base64: {e}"
+                            print(f"worker-comfyui - {error_msg}")
+                            errors.append(error_msg)
 
     except websocket.WebSocketException as e:
         print(f"worker-comfyui - WebSocket Error: {e}")

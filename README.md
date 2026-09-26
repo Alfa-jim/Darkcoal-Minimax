@@ -73,11 +73,13 @@ do {
     $st.output | ConvertTo-Json -Depth 5
     # if S3 disabled, output.images[0].data is base64 mp4
     # save video
-    if($st.output.images){
-      $b64 = $st.output.images[0].data
-      $bytes = [Convert]::FromBase64String($b64)
+    # handler returns images[] with media_type=gifs/videos for mp4 (SaveVideo) — base64 or S3 url
+    $out = $st.output.images | Where-Object { $_.filename -like "*.mp4" } | Select-Object -First 1
+    if(-not $out){ $out = $st.output.images[0] }
+    if($out.type -eq "base64"){
+      $bytes = [Convert]::FromBase64String($out.data)
       Set-Content -Path ".\ad_test.mp4" -Value $bytes -AsByteStream; Invoke-Item ".\ad_test.mp4"
-    }
+    } else { Write-Host "S3 URL: $($out.data)" }
     break
   }
   if($st.status -eq "FAILED"){ $st | ConvertTo-Json -Depth 5; break }
@@ -122,6 +124,7 @@ docker buildx build --platform linux/amd64 -t YOUR_DOCKER_USER/worker-minimax-h3
 ### Troubleshooting
 
 * `ComfyUI server not reachable` -> rebuild with `--platform linux/amd64`, check `docker logs`. This image bypassed `torch cu13` issue via `cu128` pin.
+* Video is `gifs`/`videos` key in ComfyUI history — handler now captures both (`images`/`gifs`/`videos`/`audio`) and returns `media_type` so mp4+wav are not dropped.
 * `unet_name not in list` -> volume not mounted or file not at `/runpod-volume/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf` (NOT just `/unet/`) -> check `extra_model_paths.yaml` has `unet_gguf: models/diffusion_models/` like working repos.
 * OOM -> use `Q4_K_M` not `Q6_K`, ensure GPU 24GB+. L4/A6000 preferred.
 * Slow cold start -> enable FlashBoot + ensure volume is same region as workers.

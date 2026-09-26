@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DarkCoal MiniMax H3 — Ad Studio Playground</title>
+<style>
+:root{--bg:#07080d;--panel:#13131d;--panel2:#1a1a2b;--border:#25253a;--accent:#e11d48;--accent2:#fb7185;--accent3:#8b5cf6;--text:#f1f1f8;--muted:#8b8ba8;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b}
+*{box-sizing:border-box}body{margin:0;font-family:ui-sans,system-ui,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--accent2)}h1{font-size:16px;margin:0;letter-spacing:.03em}h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:20px 0 8px}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(7,8,13,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.topbar .badge{font-size:10px;padding:3px 8px;border-radius:99px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)}
+.topbar input{flex:1;min-width:200px;max-width:380px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:7px 10px;font-size:12px;outline:none}
+.topbar input:focus{border-color:var(--accent)}
+.layout{display:grid;grid-template-columns:360px 1fr 380px;min-height:calc(100vh - 48px)}
+@media(max-width:1200px){.layout{grid-template-columns:1fr}.side{border-right:none;border-bottom:1px solid var(--border)}}
+.side{background:var(--panel);border-right:1px solid var(--border);padding:14px;overflow:auto}
+.center{padding:14px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px}
+label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin:8px 0 5px}
+label:first-child{margin-top:0}
+input[type=text],input[type=number],textarea,select{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 10px;font-size:12px;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:68px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.btn{appearance:none;border:1px solid var(--border);background:var(--panel2);color:var(--text);border-radius:10px;padding:9px 12px;font-weight:600;cursor:pointer;font-size:12px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:linear-gradient(135deg,var(--accent),#be123c);border-color:transparent;color:white}
+.btn.primary:disabled{opacity:.55;cursor:not-allowed}
+.btn.ghost{background:transparent}
+.btn.small{padding:6px 10px;font-size:11px;border-radius:8px}
+.range{display:flex;gap:6px;align-items:center}
+.range input[type=range]{flex:1}
+.range b{font-size:11px;color:var(--muted);min-width:32px;text-align:right}
+.drop{border:1px dashed var(--border);border-radius:12px;padding:12px;text-align:center;background:var(--panel2);cursor:pointer}
+.drop.drag{border-color:var(--accent);background:rgba(225,29,72,.08)}
+.thumb{width:100%;max-height:160px;object-fit:cover;border-radius:8px;background:#0a0a12;border:1px solid var(--border)}
+.kv{font-size:11px;color:var(--muted);line-height:1.6}
+.kv b{color:var(--text)}
+.log{font-family:ui-monospace,Consolas,monospace;font-size:10px;white-space:pre-wrap;background:#0a0a12;border:1px solid var(--border);border-radius:10px;padding:8px;max-height:220px;overflow:auto}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.gallery .tile{position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--panel2)}
+.gallery img,.gallery video{width:100%;display:block}
+.gallery .meta{padding:6px;font-size:10px;color:var(--muted)}
+.vault{display:grid;gap:8px}
+.vault-item{border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--panel2);display:flex;gap:8px;align-items:flex-start}
+.vault-item img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0}
+.vault-item .info{flex:1;min-width:0}
+.vault-item .info b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.vault-item .info span{font-size:10px;color:var(--muted)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs .tab{padding:6px 10px;border-radius:99px;border:1px solid var(--border);background:var(--panel2);font-size:11px;cursor:pointer}
+.tabs .tab.active{background:var(--accent);border-color:transparent;color:white}
+.hidden{display:none}
+.switch{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.switch input{accent-color:var(--accent)}
+hr{border:none;border-top:1px solid var(--border);margin:12px 0}
+.small{font-size:10px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:4px 8px;border-radius:99px;background:var(--panel2);border:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#e11d48,#8b5cf6);display:grid;place-items:center;font-weight:800;font-size:13px">DC</div>
+    <div>
+      <h1>darkcoal.online — MiniMax H3 Ad Studio</h1>
+      <div class="small" style="margin-top:1px">Ref2VA Q4_K_M 11.6GB · 24 FPS + 32kHz · darkcoal-minimax</div>
+    </div>
+  </div>
+  <span class="badge">ghcr.io/alfa-jim/darkcoal-minimax:latest</span>
+  <input id="endpoint" type="text" placeholder="https://api.runpod.ai/v2/<endpoint-id>/runsync"/>
+  <input id="apikey" type="text" placeholder="RunPod API key rpa_..."/>
+  <span id="status" class="badge">idle</span>
+</div>
+
+<div class="layout">
+  <!-- LEFT: vaults -->
+  <div class="side">
+    <div class="tabs" style="margin-bottom:8px">
+      <button class="tab active" data-tab="characters" onclick="switchTab('characters')">Characters</button>
+      <button class="tab" data-tab="scenes" onclick="switchTab('scenes')">Scenes</button>
+      <button class="tab" data-tab="backgrounds" onclick="switchTab('backgrounds')">Backgrounds</button>
+      <button class="tab" data-tab="sounds" onclick="switchTab('sounds')">Sounds</button>
+      <button class="tab" data-tab="presets" onclick="switchTab('presets')">Ads</button>
+    </div>
+
+    <!-- CHARACTERS -->
+    <div id="tab-characters">
+      <div class="small">Characters are stored in <b>localStorage</b> (base64). Each holds up to 9 ref images. Select one to inject into generation. Ref2VA = identity lock.</div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <input id="charName" type="text" placeholder="New character name e.g. Luna — beach blonde"/>
+        <button class="btn small primary" onclick="createCharacter()">+ Character</button>
+      </div>
+      <input id="charFile" type="file" accept="image/*" multiple class="hidden" onchange="onCharFiles(this.files)"/>
+      <div id="charList" class="vault" style="margin-top:10px"></div>
+      <div class="small" style="margin-top:8px">Tip: front + side + outfit = best consistency. Add to active refs via <b>Use</b> button.</div>
+    </div>
+
+    <!-- SCENES -->
+    <div id="tab-scenes" class="hidden">
+      <div class="small">Scene = prompt snippet + camera + lighting. Click <b>Use</b> to append to prompt. Saved locally.</div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <input id="sceneName" type="text" placeholder="Scene name e.g. Luxury Bedroom"/>
+        <button class="btn small primary" onclick="createScene()">+ Scene</button>
+      </div>
+      <textarea id="scenePrompt" rows="2" placeholder="Scene prompt snippet e.g. luxury bedroom, soft bokeh, silk sheets, golden hour"></textarea>
+      <div id="sceneList" class="vault" style="margin-top:8px"></div>
+      <div class="small" style="margin-top:6px">Built-ins: luxury bedroom, neon club, beach sunset, fantasy tavern, office noir, cyber street.</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        <button class="btn small ghost" onclick="addBuiltInScenes()">+ add built-ins</button>
+        <button class="btn small ghost" onclick="exportScenes()">export</button>
+        <button class="btn small ghost" onclick="importScenes()">import</button>
+      </div>
+      <input id="sceneImport" type="file" accept=".json" class="hidden" onchange="onSceneImport(this)"/>
+    </div>
+
+    <!-- BACKGROUNDS -->
+    <div id="tab-backgrounds" class="hidden">
+      <div class="small">Background = image ref OR prompt token. Store bg plates for reuse.</div>
+      <input id="bgFile" type="file" accept="image/*" multiple class="hidden" onchange="onBgFiles(this.files)"/>
+      <button class="btn small" onclick="document.getElementById('bgFile').click()">Upload background plate(s)</button>
+      <div id="bgList" class="vault" style="margin-top:8px"></div>
+      <label>Background prompt tokens</label>
+      <textarea id="bgPrompt" rows="2" placeholder="e.g. bokeh city lights, rain window"></textarea>
+      <button class="btn small ghost" onclick="saveBgPrompt()">save token</button>
+      <div id="bgTokens" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
+    </div>
+
+    <!-- SOUNDS -->
+    <div id="tab-sounds" class="hidden">
+      <div class="small">MiniMax H3 generates <b>32kHz stereo</b> natively. Add optional audio refs (up to 3) — whisper, music, SFX. Stored as base64.</div>
+      <input id="audioFile" type="file" accept="audio/*,video/*" multiple class="hidden" onchange="onAudioFiles(this.files)"/>
+      <button class="btn small" onclick="document.getElementById('audioFile').click()">Upload audio ref (mp3/wav)</button>
+      <div id="audioList" class="vault" style="margin-top:8px"></div>
+      <label>Video refs (up to 3)</label>
+      <input id="videoFile" type="file" accept="video/*" multiple class="hidden" onchange="onVideoFiles(this.files)"/>
+      <button class="btn small ghost" onclick="document.getElementById('videoFile').click()">Upload video ref (mp4)</button>
+      <div id="videoList" class="vault" style="margin-top:8px"></div>
+      <div class="small">Audio/video refs are sent as additional <code>images</code> entries with matching Load nodes — max 12 assets total.</div>
+    </div>
+
+    <!-- AD PRESETS -->
+    <div id="tab-presets" class="hidden">
+      <div class="small">One-click ad templates for <b>darkcoal.online</b> — 5-6s hooks that convert.</div>
+      <div id="adPresets" class="vault" style="margin-top:8px"></div>
+      <hr/>
+      <div class="small"><b>CTA overlays</b> (add in post, not in prompt):</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        <span class="chip">Your story awaits — darkcoal.online</span>
+        <span class="chip">Chat now →</span>
+        <span class="chip">18+ AI Roleplay</span>
+      </div>
+      <label>Custom CTA text</label><input id="ctaText" type="text" value="Your story awaits — darkcoal.online" placeholder="overlay text for editor"/>
+      <label class="switch"><input id="includeCTAInPrompt" type="checkbox"/> mention CTA in prompt (whispered)</label>
+    </div>
+
+    <hr/>
+    <h2>Active refs (will be sent)</h2>
+    <div class="small">Up to 9 images / 3 videos / 3 audios. Names must match Load nodes. Drag to reorder (first = strongest identity).</div>
+    <div id="activeRefs" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px"></div>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <button class="btn small ghost" onclick="clearActive()">clear</button>
+      <button class="btn small ghost" onclick="shuffleActive()">shuffle</button>
+      <span class="small" id="activeCount">0 / 12</span>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center">
+    <div class="card">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button id="go" class="btn primary" onclick="generate()">Generate — runsync</button>
+        <button class="btn small ghost" onclick="randomSeed()">random seed</button>
+        <span id="timer" class="badge">—</span>
+        <span id="seedInfo" class="small"></span>
+        <span class="small" style="margin-left:auto">Mode: <b>Ref2VA</b> · <span id="modeLabel">T2VA if no refs, Ref2VA if refs</span></span>
+      </div>
+      <hr/>
+      <div id="previewWrap" style="display:grid;gap:10px">
+        <div id="preview" style="min-height:380px;display:grid;place-items:center;border:1px solid var(--border);border-radius:12px;background:#0a0a12;overflow:hidden;position:relative">
+          <div class="small" style="padding:28px;text-align:center">No video yet — pick a character + scene + hit Generate.<br/>Video appears here · 24 FPS · 32kHz stereo mp4</div>
+        </div>
+        <div class="row">
+          <button class="btn small ghost" onclick="downloadLast()">download mp4</button>
+          <button class="btn small ghost" onclick="copyWorkflow()">copy payload</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">Prompt — ad copy</h2>
+      <textarea id="prompt" rows="4">cinematic ad for AI roleplay platform darkcoal.online, beautiful 24yo woman with shoulder-length auburn hair, green eyes, soft smile, luxury bedroom with warm golden lighting, silk sheets, looking at camera, gentle whisper "your story awaits", inviting, 4k, shallow depth of field, 24fps</textarea>
+      <div class="row">
+        <div><label>Negative prompt</label><textarea id="neg" rows="2">blurry, lowres, bad anatomy, extra fingers, watermark, text, logo, deformed</textarea></div>
+        <div>
+          <label>Aspect & Duration</label>
+          <div class="row">
+            <select id="aspect"><option value="16:9" selected>16:9 landscape (YouTube)</option><option value="9:16">9:16 vertical (TikTok/Reels)</option><option value="1:1">1:1 square (Feed)</option><option value="4:3">4:3</option><option value="21:9">21:9 cinematic</option></select>
+            <select id="duration"><option value="4">4s</option><option value="5" selected>5s</option><option value="6">6s</option><option value="8">8s</option><option value="10">10s</option><option value="12">12s</option><option value="15">15s</option></select>
+          </div>
+          <div class="row" style="margin-top:6px">
+            <select id="width"><option value="1280">1280×720 HD (fast)</option><option value="1024">1024×576</option><option value="768" selected>768p native</option></select>
+            <select id="fps"><option value="24" selected>24 FPS</option></select>
+          </div>
+          <label class="switch" style="margin-top:8px"><input id="withAudio" type="checkbox" checked/> generate synchronized audio (32kHz stereo)</label>
+        </div>
+      </div>
+      <div class="row">
+        <div><label>Seed (-1 random)</label><input id="seed" type="number" value="-1"/></div>
+        <div><label>Batch</label><input id="batch" type="number" value="1" min="1" max="2"/></div>
+      </div>
+      <div class="small">Ref2VA keeps identity locked across frames — use 2-3 char images (front/side/outfit) + scene text. For T2VA leave refs empty.</div>
+    </div>
+
+    <div class="card">
+      <b style="font-size:11px">Raw workflow (editable) — ComfyUI API format</b>
+      <div class="small">Edit full graph if you need custom nodes. When enabled, Generate uses this JSON directly.</div>
+      <label class="switch"><input id="useCustom" type="checkbox" onchange="toggleCustom()"/> use custom workflow below</label>
+      <textarea id="customJson" rows="10" placeholder='{"3":{"inputs":{"unet_name":"MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf"},...}'></textarea>
+      <div class="row"><button class="btn small ghost" onclick="fillCustom()">fill from settings</button><button class="btn small ghost" onclick="formatCustom()">format</button><button class="btn small ghost" onclick="copyWorkflow()">copy</button></div>
+    </div>
+
+    <div class="card">
+      <b style="font-size:11px">Log</b>
+      <div id="log" class="log">idle — set endpoint + key, build ad, generate.</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: gallery -->
+  <div class="side">
+    <h2>Gallery — generated ads</h2>
+    <div style="display:flex;gap:6px">
+      <button class="btn small ghost" onclick="clearGallery()">clear</button>
+      <button class="btn small ghost" onclick="exportGallery()">open all</button>
+    </div>
+    <div id="gallery" class="gallery" style="margin-top:10px"></div>
+
+    <h2>Projects — save ad pack</h2>
+    <div class="small">Bundle prompt + refs + settings as local project. Export to share with team.</div>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <input id="projName" type="text" placeholder="Project name e.g. Luna — beach v2"/>
+      <button class="btn small primary" onclick="saveProject()">save</button>
+    </div>
+    <div id="projList" style="display:grid;gap:6px;margin-top:8px"></div>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <button class="btn small ghost" onclick="exportProjects()">export .json</button>
+      <button class="btn small ghost" onclick="document.getElementById('projImport').click()">import</button>
+    </div>
+    <input id="projImport" type="file" accept=".json" class="hidden" onchange="onProjImport(this)"/>
+
+    <h2>Export</h2>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn small" onclick="copyShareLink()">copy share link</button>
+      <button class="btn small ghost" onclick="downloadPayload()">payload .json</button>
+      <button class="btn small ghost" onclick="downloadProject()">project .json</button>
+    </div>
+    <div class="small" style="margin-top:6px">Share link encodes prompt + params (refs not in URL — export project).</div>
+
+    <h2>Endpoint</h2>
+    <div class="kv">
+      Image: <b>ghcr.io/alfa-jim/darkcoal-minimax:latest</b><br/>
+      Disk: <b>25 GB</b> · GPU <b>A6000 48GB / 4090 24GB</b> · model <b>MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf 11.6GB</b> at <code>/runpod-volume/models/diffusion_models/</code><br/>
+      Endpoint path: <select id="epPath" style="width:auto;display:inline-block"><option value="runsync" selected>runsync (wait)</option><option value="run">run (poll /status)</option></select>
+    </div>
+    <div class="small">Cold start ~25s (Network Volume). Warm gen ~120-180s. Cost ~$0.02/video on A6000.</div>
+
+    <hr/>
+    <div class="small">For <b>darkcoal.online</b> ads: keep 5-6s, front-lit face, whisper hook in first 2s, logo overlay in post. Ref2VA identity lock = no model drift between ads.</div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const LS_PREFIX='darkcoal-h3-';
+let activeRefs=[]; // {name, dataUrl, base64, kind: 'image'|'audio'|'video'}
+let vaultChars=[]; let vaultScenes=[]; let vaultBgs=[]; let vaultBgTokens=[]; let vaultAudios=[]; let vaultVideos=[];
+let lastSeed=null; let lastVideoSrc=null;
+
+function log(m){const el=$('log');const t=new Date().toLocaleTimeString();el.textContent+='\n['+t+'] '+m;el.scrollTop=el.scrollHeight}
+function setStatus(t,ok){$('status').textContent=t;$('status').style.color=ok===true?'var(--ok)':ok===false?'var(--err)':''}
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  ['characters','scenes','backgrounds','sounds','presets'].forEach(n=>{
+    const el=document.getElementById('tab-'+n);
+    if(el) el.classList.toggle('hidden', n!==name);
+  });
+}
+
+// persistence helpers
+function loadLS(key,fallback){try{const v=localStorage.getItem(LS_PREFIX+key);return v?JSON.parse(v):fallback}catch(e){return fallback}}
+function saveLS(key,val){localStorage.setItem(LS_PREFIX+key, JSON.stringify(val))}
+function initPersist(){
+  try{
+    const ep=localStorage.getItem(LS_PREFIX+'endpoint'); if(ep) $('endpoint').value=ep;
+    const ak=localStorage.getItem(LS_PREFIX+'apikey'); if(ak) $('apikey').value=ak;
+    if(!ep || !ak){
+      const qEp=localStorage.getItem('illustrious.endpoint')||localStorage.getItem('qwen.endpoint');
+      const qAk=localStorage.getItem('illustrious.apikey')||localStorage.getItem('qwen.apikey');
+      if(qEp && !$('endpoint').value) $('endpoint').value=qEp;
+      if(qAk && !$('apikey').value) $('apikey').value=qAk;
+    }
+    $('endpoint').addEventListener('input',()=>localStorage.setItem(LS_PREFIX+'endpoint',$('endpoint').value));
+    $('apikey').addEventListener('input',()=>localStorage.setItem(LS_PREFIX+'apikey',$('apikey').value));
+    vaultChars=loadLS('chars',[]); vaultScenes=loadLS('scenes',[]); vaultBgs=loadLS('bgs',[]); vaultBgTokens=loadLS('bgTokens',[]); vaultAudios=loadLS('audios',[]); vaultVideos=loadLS('videos',[]);
+    const savedActive=loadLS('active',null); if(savedActive) activeRefs=savedActive;
+  }catch(e){}
+}
+
+// CHARACTERS
+function renderChars(){
+  const wrap=$('charList'); wrap.innerHTML='';
+  if(!vaultChars.length) wrap.innerHTML='<div class="small" style="padding:10px;border:1px dashed var(--border);border-radius:10px;text-align:center">No characters — create one above, then upload images into it.</div>';
+  vaultChars.forEach((c,idx)=>{
+    const div=document.createElement('div'); div.className='vault-item';
+    const thumb=c.images[0]?.dataUrl || '';
+    div.innerHTML=`<img src="${thumb||'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2256%22 height=%2256%22><rect width=%2256%22 height=%2256%22 fill=%22%231a1a2b%22/><text x=%2228%22 y=%2232%22 text-anchor=%22middle%22 fill=%22%238b8ba8%22 font-size=%2218%22>?</text></svg>'}" />
+      <div class="info"><b>${c.name}</b><span>${c.images.length} refs · ${c.note||''}</span><div style="display:flex;gap:4px;margin-top:6px"><button class="btn small primary" onclick="useChar(${idx})">Use</button><button class="btn small ghost" onclick="addImagesToChar(${idx})">+ imgs</button><button class="btn small ghost" onclick="editChar(${idx})">edit</button><button class="btn small ghost" onclick="deleteChar(${idx})">×</button></div></div>`;
+    wrap.appendChild(div);
+  });
+  saveLS('chars',vaultChars);
+}
+function createCharacter(){
+  const name=$('charName').value.trim(); if(!name) return alert('Name required');
+  vaultChars.unshift({name, note:'', images:[]}); $('charName').value=''; renderChars(); renderActive();
+  setTimeout(()=>addImagesToChar(0),100);
+}
+function addImagesToChar(idx){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+  inp.onchange=()=>{ [...inp.files].forEach(f=>{
+    const r=new FileReader(); r.onload=()=>{ vaultChars[idx].images.push({name:f.name, dataUrl:r.result}); if(vaultChars[idx].images.length>9) vaultChars[idx].images=vaultChars[idx].images.slice(0,9); renderChars(); }; r.readAsDataURL(f);
+  })};
+  inp.click();
+}
+function useChar(idx){
+  const c=vaultChars[idx];
+  activeRefs=[];
+  c.images.slice(0,9).forEach((im,i)=>{
+    const ext=im.name.split('.').pop()||'png';
+    activeRefs.push({name:`char_${idx}_${i}.${ext}`, dataUrl:im.dataUrl, base64:im.dataUrl.split(',')[1], kind:'image'});
+  });
+  renderActive(); log('using character '+c.name+' ('+c.images.length+' refs)');
+}
+function editChar(idx){const n=prompt('Rename character',vaultChars[idx].name); if(n) {vaultChars[idx].name=n; renderChars();}}
+function deleteChar(idx){ if(!confirm('Delete '+vaultChars[idx].name+'?')) return; vaultChars.splice(idx,1); renderChars(); }
+function onCharFiles(files){ /* unused legacy */ }
+
+// SCENES
+function renderScenes(){
+  const wrap=$('sceneList'); wrap.innerHTML='';
+  vaultScenes.forEach((s,i)=>{
+    const d=document.createElement('div'); d.className='vault-item'; d.style.flexDirection='column';
+    d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;width:100%"><b style="font-size:12px">${s.name}</b><span class="small">${s.prompt.slice(0,40)}…</span></div><div class="small" style="margin-top:4px;white-space:pre-wrap">${s.prompt}</div><div style="display:flex;gap:4px;margin-top:6px"><button class="btn small primary" onclick="useScene(${i})">Use</button><button class="btn small ghost" onclick="deleteScene(${i})">×</button></div>`;
+    wrap.appendChild(d);
+  }); saveLS('scenes',vaultScenes);
+}
+function createScene(){const n=$('sceneName').value.trim();const p=$('scenePrompt').value.trim(); if(!n||!p) return alert('Name + prompt needed'); vaultScenes.unshift({name:n,prompt:p}); $('sceneName').value=''; $('scenePrompt').value=''; renderScenes();}
+function useScene(i){$('prompt').value=vaultScenes[i].prompt + ($('includeCTAInPrompt').checked && $('ctaText').value ? ', whispers "'+$('ctaText').value+'"' : '') + ' — ' + $('prompt').value; log('scene '+vaultScenes[i].name+' applied');}
+function deleteScene(i){vaultScenes.splice(i,1); renderScenes();}
+function addBuiltInScenes(){
+  const builtIns=[
+    {name:'Luxury Bedroom',prompt:'luxury bedroom, silk sheets, warm golden hour light, soft bokeh, intimate, shallow depth of field'},
+    {name:'Neon Club',prompt:'neon cyber club, pink blue lights, crowd bokeh, moody, cinematic anamorphic'},
+    {name:'Beach Sunset',prompt:'tropical beach sunset, golden light, gentle waves, warm breeze, dreamy haze'},
+    {name:'Fantasy Tavern',prompt:'medieval fantasy tavern, warm firelight, wooden interior, magical ambience'},
+    {name:'Office Noir',prompt:'modern office at night, city lights through window, dramatic shadows, noir'},
+    {name:'Cyber Street',prompt:'rainy cyberpunk street, neon reflections, wet pavement, night, cinematic'},
+    {name:'Velvet Lounge',prompt:'velvet lounge, dim ambient light, champagne, luxury, film grain'},
+    {name:'Rooftop Night',prompt:'rooftop at night, city skyline bokeh, wind in hair, cinematic drone pull'},
+  ];
+  builtIns.forEach(b=>{ if(!vaultScenes.find(s=>s.name===b.name)) vaultScenes.push(b);});
+  renderScenes(); log('built-in scenes added');
+}
+function exportScenes(){const blob=new Blob([JSON.stringify(vaultScenes,null,2)],{type:'application/json'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download='h3-scenes.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+function importScenes(){ $('sceneImport').click(); }
+function onSceneImport(inp){const f=inp.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{try{const arr=JSON.parse(r.result); if(Array.isArray(arr)) {vaultScenes=arr.concat(vaultScenes); renderScenes(); log('imported '+arr.length+' scenes')}}catch(e){alert(e.message)}}; r.readAsText(f); inp.value='';}
+
+// BACKGROUNDS
+function renderBgs(){
+  const wrap=$('bgList'); wrap.innerHTML='';
+  vaultBgs.forEach((bg,i)=>{
+    const d=document.createElement('div'); d.className='vault-item';
+    d.innerHTML=`<img src="${bg.dataUrl}" /><div class="info"><b>${bg.name}</b><span>plate</span><div style="display:flex;gap:4px;margin-top:6px"><button class="btn small primary" onclick="useBg(${i})">Use</button><button class="btn small ghost" onclick="deleteBg(${i})">×</button></div></div>`;
+    wrap.appendChild(d);
+  }); saveLS('bgs',vaultBgs);
+  const tokWrap=$('bgTokens'); tokWrap.innerHTML='';
+  vaultBgTokens.forEach((t,i)=>{const s=document.createElement('span'); s.className='chip'; s.innerHTML=`${t} <a href="#" onclick="deleteBgToken(${i});return false" style="color:var(--muted)">×</a>`; tokWrap.appendChild(s);});
+}
+function onBgFiles(files){[...files].forEach(f=>{const r=new FileReader(); r.onload=()=>{vaultBgs.push({name:f.name, dataUrl:r.result}); if(vaultBgs.length>20) vaultBgs=vaultBgs.slice(-20); renderBgs();}; r.readAsDataURL(f);})}
+function useBg(i){activeRefs.push({name:`bg_${i}.png`, dataUrl:vaultBgs[i].dataUrl, base64:vaultBgs[i].dataUrl.split(',')[1], kind:'image'}); if(activeRefs.length>12) activeRefs=activeRefs.slice(0,12); renderActive(); log('bg plate added');}
+function deleteBg(i){vaultBgs.splice(i,1); renderBgs();}
+function saveBgPrompt(){const v=$('bgPrompt').value.trim(); if(!v) return; vaultBgTokens.push(v); $('bgPrompt').value=''; renderBgs(); saveLS('bgTokens',vaultBgTokens);}
+function deleteBgToken(i){vaultBgTokens.splice(i,1); renderBgs(); saveLS('bgTokens',vaultBgTokens);}
+
+// SOUNDS / VIDEO
+function renderAudios(){
+  const wrap=$('audioList'); wrap.innerHTML='';
+  vaultAudios.forEach((a,i)=>{
+    const d=document.createElement('div'); d.className='vault-item';
+    d.innerHTML=`<div class="info"><b>${a.name}</b><span>${(a.size/1024).toFixed(0)} KB</span><audio controls src="${a.dataUrl}" style="width:100%;margin-top:4px"></audio><div style="display:flex;gap:4px;margin-top:6px"><button class="btn small primary" onclick="useAudio(${i})">Use</button><button class="btn small ghost" onclick="deleteAudio(${i})">×</button></div></div>`;
+    wrap.appendChild(d);
+  }); saveLS('audios',vaultAudios);
+  const vWrap=$('videoList'); vWrap.innerHTML='';
+  vaultVideos.forEach((v,i)=>{
+    const d=document.createElement('div'); d.className='vault-item'; d.innerHTML=`<video src="${v.dataUrl}" style="width:80px;height:56px;object-fit:cover;border-radius:8px" muted></video><div class="info"><b>${v.name}</b><span>${(v.size/1024).toFixed(0)} KB</span><div style="display:flex;gap:4px;margin-top:6px"><button class="btn small primary" onclick="useVideo(${i})">Use</button><button class="btn small ghost" onclick="deleteVideo(${i})">×</button></div></div>`; vWrap.appendChild(d);
+  }); saveLS('videos',vaultVideos);
+}
+function onAudioFiles(files){[...files].forEach(f=>{const r=new FileReader(); r.onload=()=>{vaultAudios.push({name:f.name, dataUrl:r.result, size:f.size}); renderAudios();}; r.readAsDataURL(f);})}
+function onVideoFiles(files){[...files].forEach(f=>{const r=new FileReader(); r.onload=()=>{vaultVideos.push({name:f.name, dataUrl:r.result, size:f.size}); renderAudios();}; r.readAsDataURL(f);})}
+function useAudio(i){activeRefs.push({name:`audio_${i}.mp3`, dataUrl:vaultAudios[i].dataUrl, base64:vaultAudios[i].dataUrl.split(',')[1], kind:'audio'}); if(activeRefs.length>12) activeRefs=activeRefs.slice(0,12); renderActive();}
+function useVideo(i){activeRefs.push({name:`video_${i}.mp4`, dataUrl:vaultVideos[i].dataUrl, base64:vaultVideos[i].dataUrl.split(',')[1], kind:'video'}); if(activeRefs.length>12) activeRefs=activeRefs.slice(0,12); renderActive();}
+function deleteAudio(i){vaultAudios.splice(i,1); renderAudios();}
+function deleteVideo(i){vaultVideos.splice(i,1); renderAudios();}
+
+// AD PRESETS
+const adPresets=[
+  {name:'Hook — Whisper Close', dur:5, aspect:'9:16', prompt:'extreme close-up, beautiful woman whispers to camera "your story awaits on darkcoal.online", soft lips, eye contact, shallow depth, warm light, intimate, 4k'},
+  {name:'Hook — Bedroom Reveal', dur:6, aspect:'16:9', prompt:'slow push-in, luxury bedroom, woman on silk sheets sits up, smiles at camera, warm golden hour, bokeh, inviting, "AI roleplay, your fantasy"',},
+  {name:'Hook — Club Tease', dur:5, aspect:'9:16', prompt:'neon club, woman leans in, winks, whispers "come find me on darkcoal", pink blue neon, shallow depth, anamorphic'},
+  {name:'Fantasy — Tavern', dur:8, aspect:'16:9', prompt:'fantasy tavern, elven beauty by fireplace, looks at camera, magical dust, "your adventure begins"',},
+  {name:'Beach — Sunset Walk', dur:6, aspect:'9:16', prompt:'beach sunset walk, woman turns back to camera, hair in wind, golden light, dreamy, free'},
+  {name:'Cyber — Rain Street', dur:5, aspect:'16:9', prompt:'rainy cyber street at night, woman under neon umbrella, looks back, mysterious, cinematic rain reflections'},
+];
+function renderAdPresets(){
+  const wrap=$('adPresets'); wrap.innerHTML='';
+  adPresets.forEach((p,i)=>{
+    const d=document.createElement('div'); d.className='vault-item'; d.style.flexDirection='column';
+    d.innerHTML=`<div style="display:flex;justify-content:space-between;width:100%"><b style="font-size:12px">${p.name}</b><span class="chip">${p.aspect} · ${p.dur}s</span></div><div class="small" style="margin-top:4px">${p.prompt}</div><button class="btn small primary" style="margin-top:6px" onclick="useAdPreset(${i})">Load preset</button>`;
+    wrap.appendChild(d);
+  });
+}
+function useAdPreset(i){const p=adPresets[i]; $('prompt').value=p.prompt; $('duration').value=p.dur; $('aspect').value=p.aspect; log('ad preset '+p.name); syncAspect();}
+
+// ACTIVE REFS
+function renderActive(){
+  const wrap=$('activeRefs'); wrap.innerHTML='';
+  activeRefs.forEach((r,i)=>{
+    const isImg=r.kind==='image' || r.dataUrl.startsWith('data:image');
+    const preview=isImg?`<img src="${r.dataUrl}" style="width:100%;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)"/>`:`<div style="width:100%;height:80px;display:grid;place-items:center;background:var(--panel2);border-radius:8px;border:1px solid var(--border);font-size:10px">${r.kind} ${r.name}</div>`;
+    const d=document.createElement('div'); d.style.cssText='border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--panel2);padding:6px';
+    d.innerHTML=`${preview}<div class="small" style="margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</div><div style="display:flex;gap:4px;margin-top:4px"><button class="btn small ghost" onclick="moveActive(${i},-1)">↑</button><button class="btn small ghost" onclick="moveActive(${i},1)">↓</button><button class="btn small ghost" onclick="removeActive(${i})">×</button></div>`;
+    wrap.appendChild(d);
+  });
+  $('activeCount').textContent=activeRefs.length+' / 12';
+  saveLS('active',activeRefs);
+  const label=activeRefs.length? 'Ref2VA ('+activeRefs.length+' refs)':'T2VA (no refs)';
+  $('modeLabel').textContent=label;
+}
+function clearActive(){activeRefs=[]; renderActive();}
+function removeActive(i){activeRefs.splice(i,1); renderActive();}
+function moveActive(i,dir){const j=i+dir; if(j<0||j>=activeRefs.length) return; const tmp=activeRefs[i]; activeRefs[i]=activeRefs[j]; activeRefs[j]=tmp; renderActive();}
+function shuffleActive(){for(let i=activeRefs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); const t=activeRefs[i]; activeRefs[i]=activeRefs[j]; activeRefs[j]=t;} renderActive();}
+
+// Workflow builder
+function syncAspect(){
+  const ar=$('aspect').value;
+  // we keep width fixed, handler interprets aspect_ratio, but also set width for latent
+}
+function buildWorkflow(){
+  const prompt=$('prompt').value;
+  const aspect=$('aspect').value;
+  const dur=parseInt($('duration').value)||5;
+  const width=parseInt($('width').value)||768;
+  let height=width;
+  if(aspect==='16:9') height=Math.round(width*9/16/64)*64;
+  else if(aspect==='9:16') height=Math.round(width*16/9/64)*64;
+  else if(aspect==='1:1') height=width;
+  else if(aspect==='4:3') height=Math.round(width*3/4/64)*64;
+  else if(aspect==='21:9') height=Math.round(width*9/21/64)*64;
+  let seedVal=parseInt($('seed').value); if(isNaN(seedVal)||seedVal===-1) seedVal=Math.floor(Math.random()*2147483647);
+  lastSeed=seedVal; $('seedInfo').textContent='seed '+seedVal;
+  const length=Math.round(dur*24); // 24 fps
+
+  const wf={};
+  wf["3"]={inputs:{unet_name:"MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf"},class_type:"UnetLoaderGGUF"};
+  wf["10"]={inputs:{prompt, aspect_ratio:aspect, duration:dur},class_type:"MiniMaxH3Prompt"};
+  wf["15"]={inputs:{width, height, length},class_type:"EmptyH3LatentVideo"};
+  if(activeRefs.length){
+    // LoadImageSet expects list of image names; handler uploads them via /upload/image, then LoadImageSet resolves
+    const imgNames=activeRefs.filter(r=>r.kind==='image'||r.dataUrl.startsWith('data:image')).map(r=>r.name);
+    if(imgNames.length) wf["20"]={inputs:{images:imgNames},class_type:"LoadImageSet"};
+    wf["25"]={inputs:{model:["3",0], conditioning:["10",0], latent:["15",0], ...(imgNames.length?{reference_images:["20",0]}:{})},class_type:"MiniMaxH3Sampler"};
+  } else {
+    wf["25"]={inputs:{model:["3",0], conditioning:["10",0], latent:["15",0]},class_type:"MiniMaxH3Sampler"};
+  }
+  wf["30"]={inputs:{samples:["25",0], vae:["3",1]},class_type:"VAEDecode"};
+  wf["35"]={inputs:{filename_prefix:"h3_darkcoal_ad", images:["30",0]},class_type:"SaveVideo"};
+  if(!$('useCustom').checked) $('customJson').value=JSON.stringify(wf,null,2);
+  return wf;
+}
+function fillCustom(){buildWorkflow(); $('useCustom').checked=true;}
+function formatCustom(){try{$('customJson').value=JSON.stringify(JSON.parse($('customJson').value),null,2)}catch(e){log('format err '+e.message)}}
+function copyWorkflow(){const txt=$('useCustom').checked?$('customJson').value:JSON.stringify(buildWorkflow(),null,2); navigator.clipboard.writeText(txt).then(()=>log('copied payload')); }
+function downloadPayload(){const wf=$('useCustom').checked?JSON.parse($('customJson').value||'{}'):buildWorkflow(); const blob=new Blob([JSON.stringify({input:{workflow:wf}},null,2)],{type:'application/json'}); const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download='h3_payload.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1000);}
+function randomSeed(){$('seed').value=-1; buildWorkflow();}
+function toggleCustom(){}
+function copyShareLink(){const payload=btoa(unescape(encodeURIComponent(JSON.stringify({p:$('prompt').value,n:$('neg').value})))); const url=location.href.split('?')[0]+'?q='+payload; navigator.clipboard.writeText(url).then(()=>log('share link copied')); }
+(function loadShare(){const q=new URLSearchParams(location.search).get('q'); if(!q) return; try{const o=JSON.parse(decodeURIComponent(escape(atob(q)))); if(o.p) $('prompt').value=o.p; if(o.n) $('neg').value=o.n;}catch(e){}})();
+
+// Projects
+function saveProject(){
+  const name=$('projName').value.trim()||('ad-'+new Date().toISOString().slice(0,10));
+  const proj={name, prompt:$('prompt').value, neg:$('neg').value, aspect:$('aspect').value, duration:$('duration').value, width:$('width').value, seed:$('seed').value, refs:activeRefs, cta:$('ctaText').value, createdAt:new Date().toISOString()};
+  const list=loadLS('projects',[]); list.unshift(proj); saveLS('projects',list); $('projName').value=''; renderProjects(); log('saved project '+name);
+}
+function renderProjects(){
+  const wrap=$('projList'); if(!wrap) return; wrap.innerHTML='';
+  const list=loadLS('projects',[]);
+  if(!list.length) {wrap.innerHTML='<div class="small" style="padding:8px;border:1px dashed var(--border);border-radius:10px;text-align:center">No projects — save current ad pack.</div>'; return;}
+  list.forEach((p,i)=>{
+    const d=document.createElement('div'); d.className='vault-item'; d.style.flexDirection='column';
+    d.innerHTML=`<b style="font-size:11px">${p.name}</b><span class="small">${p.aspect} · ${p.duration}s · ${p.refs.length} refs</span><div style="display:flex;gap:4px;margin-top:6px"><button class="btn small primary" onclick="loadProject(${i})">load</button><button class="btn small ghost" onclick="deleteProject(${i})">×</button></div>`;
+    wrap.appendChild(d);
+  });
+}
+function loadProject(i){const list=loadLS('projects',[]); const p=list[i]; if(!p) return; $('prompt').value=p.prompt; $('neg').value=p.neg||''; $('aspect').value=p.aspect; $('duration').value=p.duration; $('width').value=p.width; $('seed').value=p.seed; $('ctaText').value=p.cta||''; activeRefs=p.refs||[]; renderActive(); buildWorkflow(); log('loaded project '+p.name);}
+function deleteProject(i){const list=loadLS('projects',[]); list.splice(i,1); saveLS('projects',list); renderProjects();}
+function exportProjects(){const list=loadLS('projects',[]); if(!list.length) return alert('No projects'); const blob=new Blob([JSON.stringify(list,null,2)],{type:'application/json'}); const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download='darkcoal-h3-projects.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1000);}
+function onProjImport(inp){const f=inp.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{try{const arr=JSON.parse(r.result); const cur=loadLS('projects',[]); saveLS('projects',arr.concat(cur)); renderProjects(); log('imported '+arr.length+' projects')}catch(e){alert(e.message)}}; r.readAsText(f); inp.value='';}
+function downloadProject(){const proj={name:'current', prompt:$('prompt').value, refs:activeRefs}; const blob=new Blob([JSON.stringify(proj,null,2)],{type:'application/json'}); const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download='h3_project.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1000);}
+
+// Gallery helpers
+function clearGallery(){ $('gallery').innerHTML=''; $('preview').innerHTML='<div class="small" style="padding:28px;text-align:center">Cleared.</div>'; lastVideoSrc=null; }
+function exportGallery(){ [...document.querySelectorAll('#gallery .tile')].forEach(t=>{const v=t.querySelector('video,img'); if(v) window.open(v.src,'_blank')}) }
+function downloadLast(){ if(!lastVideoSrc) return alert('No video yet'); const a=document.createElement('a'); a.href=lastVideoSrc; a.download='darkcoal_ad.mp4'; a.click(); }
+
+// Generate
+async function generate(){
+  const endpoint=$('endpoint').value.trim().replace(/\/$/,'');
+  const key=$('apikey').value.trim();
+  if(!endpoint||!key) return alert('Set endpoint URL and API key in top bar');
+  const btn=$('go'); btn.disabled=true; const t0=performance.now();
+  setStatus('running…');
+  const timer=setInterval(()=>{$('timer').textContent=((performance.now()-t0)/1000).toFixed(1)+'s'},200);
+  try{
+    let workflow;
+    if($('useCustom').checked){ try{workflow=JSON.parse($('customJson').value)}catch(e){throw new Error('Custom JSON invalid: '+e.message)} } else { workflow=buildWorkflow(); }
+    const images=activeRefs.map(r=>({name:r.name, image:r.dataUrl.startsWith('data:')?r.dataUrl:'data:image/png;base64,'+r.base64}));
+    const payload={input:{ workflow, ...(images.length?{images}:{})}};
+    log('POST '+endpoint+' nodes='+Object.keys(workflow).length+' assets='+images.length);
+    const isSync=endpoint.endsWith('/runsync')||$('epPath').value==='runsync';
+    let res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(payload)});
+    if(!res.ok){const txt=await res.text(); throw new Error('HTTP '+res.status+': '+txt.slice(0,1000));}
+    let data=await res.json();
+    if(!isSync && data.id){
+      const base=endpoint.replace(/\/run\/?$/,'');
+      const jobId=data.id;
+      log('async job '+jobId+' polling /status…');
+      for(let i=0;i<180;i++){
+        await new Promise(r=>setTimeout(r,2000));
+        const sRes=await fetch(base+'/status/'+jobId,{headers:{'Authorization':'Bearer '+key}});
+        if(!sRes.ok){const t=await sRes.text(); throw new Error('status '+sRes.status+': '+t.slice(0,500));}
+        const sData=await sRes.json(); const st=sData.status||sData.state;
+        if(st==='COMPLETED' || sData.output){data=sData; break;}
+        if(st==='FAILED'||st==='ERROR') throw new Error('job failed: '+JSON.stringify(sData).slice(0,1200));
+        log('status: '+(st||JSON.stringify(sData).slice(0,120)));
+      }
+    }
+    const out=data.output||data;
+    const elapsed=((performance.now()-t0)/1000).toFixed(1); $('timer').textContent=elapsed+'s';
+    if(out.error){ setStatus('error',false); log('ERROR: '+JSON.stringify(out,null,2)); alert(out.error); return; }
+    const imgs=out.images||[];
+    if(!imgs.length){ setStatus('no output',false); log('no images/videos: '+JSON.stringify(data).slice(0,1200)); return; }
+    setStatus('done '+imgs.length+' video(s)',true); log('got '+imgs.length+' in '+elapsed+'s');
+    // preview first video
+    const first=imgs[0];
+    const src=first.type==='s3_url'?first.data:'data:video/mp4;base64,'+first.data;
+    lastVideoSrc=src;
+    const isVideo=first.filename?.endsWith('.mp4')||first.data?.length>100000;
+    $('preview').innerHTML=isVideo?`<video src="${src}" controls autoplay loop style="width:100%;max-height:520px;background:#000;border-radius:10px"></video><div style="position:absolute;inset:auto 10px 10px auto;display:flex;gap:6px"><a class="btn small" href="${src}" download="${first.filename||'darkcoal_ad.mp4'}">download</a><button class="btn small ghost" onclick="navigator.clipboard.writeText('${src.slice(0,40)}')">copy</button></div>`:`<img src="${src}" style="max-width:100%;max-height:520px"/>`;
+    $('preview').style.position='relative';
+    // gallery
+    const gal=$('gallery');
+    imgs.forEach((im)=>{
+      const s=im.type==='s3_url'?im.data:'data:video/mp4;base64,'+im.data;
+      const tile=document.createElement('div'); tile.className='tile';
+      const isV=im.filename?.endsWith('.mp4')||im.data?.length>50000;
+      tile.innerHTML=isV?`<video src="${s}" muted loop style="width:100%"></video><div class="meta">${im.filename||'video'} · ${im.type}<br/><a href="${s}" download="${im.filename||'video.mp4'}" style="color:var(--accent2)">download</a></div>`:`<img src="${s}"/><div class="meta">${im.filename||'image'} · ${im.type}<br/><a href="${s}" download="${im.filename||'image.png'}" style="color:var(--accent2)">download</a></div>`;
+      tile._src=s;
+      if(isV) tile.querySelector('video').onclick=()=>{$('preview').innerHTML=`<video src="${s}" controls autoplay loop style="width:100%;max-height:520px"></video>`; lastVideoSrc=s;};
+      else tile.querySelector('img').onclick=()=>{$('preview').innerHTML=`<img src="${s}" style="max-width:100%;max-height:520px"/>`; lastVideoSrc=s;};
+      gal.prepend(tile);
+    });
+    window._lastVideos=imgs;
+  }catch(e){ setStatus('error',false); log('throw: '+e.message+'\n'+(e.stack||'').slice(0,600)); alert(e.message); }
+  finally{ clearInterval(timer); $('go').disabled=false; }
+}
+
+// init
+initPersist(); renderChars(); renderScenes(); renderBgs(); renderAudios(); renderAdPresets(); renderActive(); renderProjects(); buildWorkflow();
+log('ready — create character → upload 2-3 refs → pick scene/ad preset → generate. Network Volume needs 20GB, GGUF at /runpod-volume/models/diffusion_models/MiniMax-H3-Ref2VA-Pruned-Q4_K_M.gguf');
+</script>
+</body>
+</html>
